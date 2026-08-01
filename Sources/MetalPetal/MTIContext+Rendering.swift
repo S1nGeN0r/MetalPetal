@@ -183,8 +183,11 @@ public extension MTIContext {
         }
         let renderingContext = MTIImageRenderingContext(context: self)
         let resolution = try renderingContext.resolution(for: image)
+        var resolutionConsumptionWasDeferred = false
         defer {
-            resolution.markAsConsumed(by: self)
+            if !resolutionConsumptionWasDeferred {
+                resolution.markAsConsumed(by: self)
+            }
         }
         let pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer)
         let targetPixelFormat: MTLPixelFormat
@@ -276,6 +279,12 @@ public extension MTIContext {
             if let completion {
                 renderingContext.commandBuffer.addCompletedHandler { _ in completion(task) }
             }
+            if !waitUntilScheduled {
+                resolutionConsumptionWasDeferred = true
+                renderingContext.commandBuffer.addCompletedHandler { [resolution, self] _ in
+                    resolution.markAsConsumed(by: self)
+                }
+            }
             renderingContext.commandBuffer.commit()
             if waitUntilScheduled {
                 renderingContext.commandBuffer.waitUntilScheduled()
@@ -320,6 +329,12 @@ public extension MTIContext {
             let task = MTIRenderTask(commandBuffer: renderingContext.commandBuffer)
             if let completion {
                 renderingContext.commandBuffer.addCompletedHandler { _ in completion(task) }
+            }
+            if !waitUntilScheduled {
+                resolutionConsumptionWasDeferred = true
+                renderingContext.commandBuffer.addCompletedHandler { [resolution, self] _ in
+                    resolution.markAsConsumed(by: self)
+                }
             }
             renderingContext.commandBuffer.commit()
             if waitUntilScheduled {
