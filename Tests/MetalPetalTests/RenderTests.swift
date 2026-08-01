@@ -66,7 +66,7 @@ struct RenderTests {
             completion: nil
         )
         #expect(task.waitUntilScheduled(timeout: 1))
-        task.waitUntilCompleted()
+        #expect(task.waitUntilCompleted(timeout: 1))
         #expect(task.error == nil)
     }
 
