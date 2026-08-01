@@ -41,6 +41,35 @@ struct RenderTests {
         }
     }
 
+    @Test func pixelBufferRenderingCanAvoidUnboundedSchedulingWait() throws {
+        let image = MTIImage(
+            color: MTIColor(red: 1, green: 0, blue: 0, alpha: 1),
+            sRGB: false,
+            size: CGSize(width: 2, height: 2)
+        )
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            2,
+            2,
+            kCVPixelFormatType_32BGRA,
+            [kCVPixelBufferIOSurfacePropertiesKey as String: [:]] as CFDictionary,
+            &pixelBuffer
+        )
+        #expect(status == kCVReturnSuccess)
+        let context = try makeContext()
+        let task = try context.startTask(
+            toRender: image,
+            to: #require(pixelBuffer),
+            sRGB: false,
+            waitUntilScheduled: false,
+            completion: nil
+        )
+        #expect(task.waitUntilScheduled(timeout: 1))
+        task.waitUntilCompleted()
+        #expect(task.error == nil)
+    }
+
     @Test func colorInvertFilter() throws {
         let image = MTIImage(
             color: MTIColor(red: 1, green: 0, blue: 0, alpha: 1),

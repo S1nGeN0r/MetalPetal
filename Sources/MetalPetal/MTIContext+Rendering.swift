@@ -125,7 +125,29 @@ public extension MTIContext {
             toRender: image,
             to: pixelBuffer,
             sRGB: sRGB,
+            waitUntilScheduled: true,
+            completion: completion
+        )
+    }
+
+    /// Starts rendering an image to a pixel buffer with optional synchronous scheduling.
+    ///
+    /// Set `waitUntilScheduled` to `false` for real-time pipelines that must not block indefinitely
+    /// when the operating system temporarily denies GPU access. The caller must keep the pixel buffer
+    /// alive until `completion` runs and must not consume its contents before the task is scheduled.
+    func startTask(
+        toRender image: MTIImage,
+        to pixelBuffer: CVPixelBuffer,
+        sRGB: Bool,
+        waitUntilScheduled: Bool,
+        completion: ((MTIRenderTask) -> Void)?
+    ) throws -> MTIRenderTask {
+        try startTask(
+            toRender: image,
+            to: pixelBuffer,
+            sRGB: sRGB,
             destinationAlphaType: .premultiplied,
+            waitUntilScheduled: waitUntilScheduled,
             completion: completion
         )
     }
@@ -135,6 +157,24 @@ public extension MTIContext {
         to pixelBuffer: CVPixelBuffer,
         sRGB: Bool,
         destinationAlphaType: MTIAlphaType,
+        completion: ((MTIRenderTask) -> Void)?
+    ) throws -> MTIRenderTask {
+        try startTask(
+            toRender: image,
+            to: pixelBuffer,
+            sRGB: sRGB,
+            destinationAlphaType: destinationAlphaType,
+            waitUntilScheduled: true,
+            completion: completion
+        )
+    }
+
+    func startTask(
+        toRender image: MTIImage,
+        to pixelBuffer: CVPixelBuffer,
+        sRGB: Bool,
+        destinationAlphaType: MTIAlphaType,
+        waitUntilScheduled: Bool,
         completion: ((MTIRenderTask) -> Void)?
     ) throws -> MTIRenderTask {
         lockForRendering()
@@ -237,7 +277,9 @@ public extension MTIContext {
                 renderingContext.commandBuffer.addCompletedHandler { _ in completion(task) }
             }
             renderingContext.commandBuffer.commit()
-            renderingContext.commandBuffer.waitUntilScheduled()
+            if waitUntilScheduled {
+                renderingContext.commandBuffer.waitUntilScheduled()
+            }
             return task
         } else {
             // Render
@@ -280,7 +322,9 @@ public extension MTIContext {
                 renderingContext.commandBuffer.addCompletedHandler { _ in completion(task) }
             }
             renderingContext.commandBuffer.commit()
-            renderingContext.commandBuffer.waitUntilScheduled()
+            if waitUntilScheduled {
+                renderingContext.commandBuffer.waitUntilScheduled()
+            }
             return task
         }
     }
